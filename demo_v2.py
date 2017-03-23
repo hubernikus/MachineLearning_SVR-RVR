@@ -91,7 +91,6 @@ print(x_val.shape)
 print(type(y_val))
 print(y_val.shape)
 
-
 # Change value
 x_val = countryGDI
 
@@ -106,8 +105,8 @@ y_val = countryHDI_f
 # Define Regression Function
 svr_lin = SVR(kernel='linear', C=1e3)
 svr_poly = SVR(kernel='poly', C=1e3, degree=3)
-svr_rbf = SVR(kernel='rbf', C=1e3, gamma=0.1)
-
+svr_rbf = SVR(kernel='rbf', C=1e3, gamma=0.001)
+rvr = RVR(kernel = 'rbf', gamma=1) ### CHANGE TO RVR
 
 # Proceed regression using Support Vector Regression (SVR)
 t1 = time.time()
@@ -129,9 +128,8 @@ t_svr_poly = t2-t1
 print('Support Vector Regression with polynomial kernel takes {} s'.format(t_svr_poly))
 
 # Proceed reression using Relevance Vector Regression (RVR)
-rvm = RVR(kernel = 'rbf', gamma=1) ### CHANGE TO RVR
 t1 = time.time()
-y_rvr = rvm.fit(x_val,y_val).predict(x_val)
+y_rvr = rvr.fit(x_val,y_val).predict(x_val)
 t2 = time.time()
 t_rvr = t2-t1
 print('Relevance Vector Regression takes {} s'.format(t_rvr))
@@ -146,7 +144,6 @@ lw = 2
 plt.plot(x_val, y_rbf, color='navy', lw=lw, label='RBF model')
 plt.plot(x_val, y_lin, color='c', lw=lw, label='Linear model')
 #plt.plot(x_val, y_poly, color='cornflowerblue', lw=lw, label='Polynomial model')
-
 plt.plot(x_val, y_rvr, color='magenta', lw=lw, label='RVR using RBF')
 
 
@@ -160,15 +157,12 @@ plt.show() # display plot in cmd
 
 # Computation Time 
 
-
 # Computation Cost
    # HOW# HOW
 
 # Precision
 
-
 # Memory Cost
    # HOW
-
 
 print('Succesfully finished the demo script!')
