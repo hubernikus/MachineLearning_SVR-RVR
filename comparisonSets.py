@@ -9,129 +9,126 @@
 #
 #------------------------------------------------------------------------------
 
-# Libraries 
-import matplotlib.pyplot as plt # Plots
 
-import numpy as np 
-import csv 
-
-import random # Random number generator
-import time # Time measurements
-
-# Basic math function
-from math import pi, sin
-
-# Machine Learning Database
-from sklearn.svm import SVR
+# Machine learnging
+from sklearn.utils.estimator_checks import check_estimator
+from sklearn.grid_search import GridSearchCV
 from sklearn.cross_validation import train_test_split
+from sklearn.metrics import mean_squared_error
+from sklearn.svm import SVR
 
 from skbayes.rvm_ard_models import RegressionARD,ClassificationARD,RVR,RVC
 
-## -------
+import numpy as np
 
-plt.close('all')
+import matplotlib.pyplot as plt
 
-inFileName = 'Datasets/human-development/gender_development.csv'
-with open(inFileName, "rb") as csvfile:
-    datareader = csv.reader(csvfile, delimiter = ',')
-    rowNumb = -1
-    for row in datareader:
-        rowNumb += 1
+from scipy.stats import norm # Calculate norm 
 
-countryCode = []
-countryName = []
-countryGDI = []
-countryHDI_f = []
+from memory_profiler import memory_usage # Memory usage of function
 
-rowNames = []
+import time
 
-with open(inFileName, "rb") as csvfile:
-    datareader = csv.reader(csvfile, delimiter = ',')
-    rowCount = 0
-    for row in datareader:
-        if(rowCount==0):
-            rowCount += 1
-            rowNames.append(row)
-        else:
-            if(row[2] != '..'):
-                countryGDI.append(float(row[2]))
-                countryHDI_f.append(float(row[3]))
+#import sys # Variable size
 
-                rowCount += 1
-                countryName.append(row[1])
-countryGDI = np.transpose(np.array([countryGDI]))
-print(type(countryGDI))
-print(countryGDI.shape)
+#%matplotlib inline
 
-countryHDI_f = np.transpose(np.array([countryHDI_f]))
-print(type(countryHDI_f))
-print(countryHDI_f.shape)
+plt.close()
+# parameters
+n = 100
 
-# Change value
-x_val = countryGDI
-y_val = countryHDI_f
+# generate data set
+xMin, xMax = -5, 5
+np.random.seed(5)
+Xc       = np.ones([n,1])
+Xc[:,0]  = np.linspace(xMin,xMax,n)
+Yc       = 10*np.sinc(Xc[:,0]) + np.random.normal(0,1,n)
+X,x,Y,y  = train_test_split(Xc,Yc,test_size = 0.5, random_state = 0)
 
-# Define Regression Function
-svr_lin = SVR(kernel='linear', C=1e3)
-svr_poly = SVR(kernel='poly', C=1e3, degree=3)
-svr_rbf = SVR(kernel='rbf', C=1e2, gamma=0.1)
-lsrvr = RVR(kernel = 'rbf', gamma=0.1) ### CHANGE TO RVR
-
-# Proceed regression using Support Vector Regression (SVR)
+# train rvr
+rvr = RVR(gamma = 1,kernel = 'rbf')
 t1 = time.time()
-y_rbf = svr_rbf.fit(x_val, y_val).predict(x_val)
+rvr.fit(X,Y)
+#mem_usage_rvr = memory_usage(rvr.fit(X,Y))
 t2 = time.time()
-t_svr_rbf = t2-t1
-print('Support Vector Regression with RBF kernel takes {} s'.format(t_svr_rbf))
 
+rvr_err   = mean_squared_error(rvr.predict(x),y)
+rvs       = np.sum(rvr.active_)
+print "RVR error on test set is {0}, number of relevant vectors is {1}, time {2}".format(rvr_err, rvs, t2 - t1)
+
+# train svr
+svr = GridSearchCV(SVR(kernel = 'rbf', gamma = 1), param_grid = {'C':[0.001,0.1,1,10,100]},cv = 10)
 t1 = time.time()
-y_lin = svr_lin.fit(x_val, y_val).predict(x_val)
+svr.fit(X,Y)
+mem_usage_svr = memory_usage(svr.fit(X,Y))
 t2 = time.time()
-t_svr_lin = t2-t1
-print('Support Vector Regression with linear  kernel takes {} s'.format(t_svr_lin))
-
-t1 = time.time()
-#y_poly = svr_poly.fit(x_val, y_val).predict(x_val)
-t2 = time.time()
-t_svr_poly = t2-t1
-print('Support Vector Regression with polynomial kernel takes {} s'.format(t_svr_poly))
-
-# Proceed reression using Relevance Vector Regression (RVR)
-t1 = time.time()
-y_rvr = rvr.fit(x_val,y_val).predict(x_val)
-t2 = time.time()
-t_rvr = t2-t1
-print('Relevance Vector Regression takes {} s'.format(t_rvr))
-
-# Plot Data
-plt.scatter(x_val,y_val, color='red',label='Datapoints')
-plt.hold('on')
-
-# Regression Plot
-lw = 2
-plt.plot(x_val, y_rbf, color='navy', lw=lw, label='RBF model')
-plt.plot(x_val, y_lin, color='c', lw=lw, label='Linear model')
-#plt.plot(x_val, y_poly, color='cornflowerblue', lw=lw, label='Polynomial model')
-plt.plot(x_val, y_rvr, color='magenta', lw=lw, label='RVR using RBF')
+svm_err = mean_squared_error(svr.predict(x),y)
+svs     = svr.best_estimator_.support_vectors_.shape[0]
+print "SVM error on test set is {0}, number of support vectors is {1}, time {2}".format(svm_err, svs, t2 - t1)
 
 
-# Plot specification
-plt.xlabel('Data')
-plt.ylabel('Target')
-plt.title('Support Vector Regression')
+# Create Prediction
+nPred = 1000
+xPred = np.linspace(min(Xc),max(Xc),nPred).reshape((nPred,1))
+y_RVR_pred, var_RVR_pred = rvr.predict_dist(xPred)
+#y_SVR_pred, var_SVR_pred = svr.predict_dist(xPred) NOT possible?
+y_SVR_pred= svr.predict(xPred)
+y_real = 10*np.sinc(xPred)
+
+
+# plot test vs predicted datax
+plt.figure(figsize = (16,10))
+plt.plot(X[:,0],Y,"k+",markersize = 3, label = "train data")
+plt.plot(x[:,0],y,"b+",markersize = 3, label = "test data")
+
+plt.plot(xPred[:,0],y_RVR_pred,"b", markersize = 3, label = "RVR prediction")
+#plt.plot(xPred[:,0],y_RVR_pred + np.sqrt(var_RVR_pred),"c", markersize = 3, label = "y_hat +- std")
+#plt.plot(xPred[:,0],y_RVR_pred - np.sqrt(var_RVR_pred),"c", markersize = 3)
+plt.plot(rvr.relevant_vectors_,Y[rvr.active_],"co",markersize = 14,  label = "relevant vectors")
+
+# plot one standard deviation bounds
+plt.plot(xPred[:,0],y_SVR_pred,"r", markersize = 3, label = "SVR prediction")
+#plt.plot(xPred[:,0],y_SVR_pred + np.sqrt(var_RVR_pred),"c", markersize = 3, label = "y_hat +- std")
+#plt.plot(xPred[:,0],y_SVR_pred - np.sqrt(var_RVR_pred),"c", markersize = 3)
+plt.plot(svr.best_estimator_.support_vectors_,Y[svr.best_estimator_.support_],"ro",markersize = 8,  label = "support vectors")
+
+plt.plot(xPred[:,0],y_real,"k", markersize = 3, label = "real function")
+
 plt.legend()
-plt.show() # display plot in cmd
+plt.title("rvr")
+plt.xlim([xMin, xMax])
+#plt.show()
 
 
-# Computation Time 
+n_grid = 100
+max_x      = np.max(X,axis = 0)
+min_x      = np.min(X,axis = 0)
+max_y      = np.max(Y)
+min_y      = np.min(Y)
+X1         = np.linspace(min_x,max_x,n_grid)
+Y1         = np.linspace(min_y,max_y,n_grid)
+x1,y1      = np.meshgrid(X1,Y1)
+Xgrid      = np.zeros([n_grid**2,2])
+Xgrid[:,0] = np.reshape(x1,(n_grid**2,))
+Xgrid[:,1] = np.reshape(y1,(n_grid**2,))
+XgridExp = np.expand_dims(Xgrid[:,0],axis=1)
 
-# Computation Cost
-   # HOW# HOW
+mu,var     = rvr.predict_dist(XgridExp)
 
-# Precision
+#mu,var     = rvr.predict_dist(np.expand_dims(Xgrid[:,0],axis =1))
 
-
-# Memory Cost
-   # HOW
+probs      = norm.pdf(Xgrid[:,1],loc = mu, scale = np.sqrt(var))
+plt.figure(figsize = (12,8))
+plt.contourf(X1,Y1,np.reshape(probs,(n_grid,n_grid)),cmap="coolwarm")
+#plt.plot(X1,10*np.sinc(X1),'k-',linewidth = 3, label = 'real function')
+#plt.plot(X1,10*np.sinc(X1)-1.96,'k-',linewidth = 2, label = '95% real lower bound',
+#         linestyle = '--')
+#plt.plot(X1,10*np.sinc(X1)+1.96,'k-',linewidth = 2, label = '95% real upper bound',
+#         linestyle = '--')
+plt.plot(rvr.relevant_vectors_,Y[rvr.active_],"co",markersize = 12,  label = "relevant vectors")
+plt.title("PDF of Predictive Distribution of Relevance Vector Regression")
+plt.colorbar()
+plt.legend()
+#plt.show()
 
 print('Succesfully finished the demo script!')
