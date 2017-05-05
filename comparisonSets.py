@@ -34,6 +34,7 @@ import time
 #%matplotlib inline
 
 plt.close()
+
 # parameters
 n = 100
 
@@ -47,9 +48,11 @@ X,x,Y,y  = train_test_split(Xc,Yc,test_size = 0.5, random_state = 0)
 
 # train rvr
 rvr = RVR(gamma = 1,kernel = 'rbf')
+mem_us_rvr = memory_usage((rvr.fit,(X,Y)),interval=0.1)
+print(mem_us_rvr)
+
 t1 = time.time()
 rvr.fit(X,Y)
-#mem_usage_rvr = memory_usage(rvr.fit(X,Y))
 t2 = time.time()
 
 rvr_err   = mean_squared_error(rvr.predict(x),y)
@@ -58,10 +61,11 @@ print "RVR error on test set is {0}, number of relevant vectors is {1}, time {2}
 
 # train svr
 svr = GridSearchCV(SVR(kernel = 'rbf', gamma = 1), param_grid = {'C':[0.001,0.1,1,10,100]},cv = 10)
+mem_us_svr = memory_usage((svr.fit,(X,Y)),interval=0.1)
 t1 = time.time()
 svr.fit(X,Y)
-mem_usage_svr = memory_usage(svr.fit(X,Y))
 t2 = time.time()
+print(mem_us_svr)
 svm_err = mean_squared_error(svr.predict(x),y)
 svs     = svr.best_estimator_.support_vectors_.shape[0]
 print "SVM error on test set is {0}, number of support vectors is {1}, time {2}".format(svm_err, svs, t2 - t1)
