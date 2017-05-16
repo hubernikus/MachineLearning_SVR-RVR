@@ -71,6 +71,11 @@ svs     = svr.best_estimator_.support_vectors_.shape[0]
 print "SVM error on test set is {0}, number of support vectors is {1}, time {2}".format(svm_err, svs, t2 - t1)
 
 
+# Time
+# Memory usage
+# Number of SV
+
+
 # Create Prediction
 nPred = 1000
 xPred = np.linspace(min(Xc),max(Xc),nPred).reshape((nPred,1))
